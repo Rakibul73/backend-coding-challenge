@@ -4,6 +4,7 @@ export const SUCCESS_MESSAGES = {
   LEAD_CREATED: "Lead created successfully",
   LEAD_UPDATED: "Lead updated successfully",
   LEAD_DELETED: "Lead deleted successfully",
+  LOGOUT_SUCCESSFUL: "Logout successful",
 };
 
 export const ERROR_MESSAGES = {
@@ -22,4 +23,5 @@ export const ERROR_MESSAGES = {
     "Password must contain at least one number",
   INVALID_CREDENTIALS: "Invalid credentials",
   LEAD_NOT_FOUND: "Lead not found",
+  INVALID_TOKEN: "Invalid token",
 };

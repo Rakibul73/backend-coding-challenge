@@ -3,7 +3,12 @@ import { Request, Response } from "express";
 
 import User from "../models/User";
 import { SUCCESS_MESSAGES, ERROR_MESSAGES } from "../constants/messages";
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyToken,
+} from "../utils/jwt";
+import redisClient from "../utils/redisClient";
 
 export const signup = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
@@ -55,4 +60,36 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const logout = async (req: Request, res: Response): Promise<void> => {};
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    res.status(401).json({ error: ERROR_MESSAGES.UNAUTHORIZED });
+    return;
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    // Decode the token to extract the user ID
+    const decoded = verifyToken(token, process.env.ACCESS_TOKEN_SECRET!) as {
+      id: string;
+      timestamp: number;
+    };
+
+    // Calculate remaining time to live for the token
+    const expiryTime = Math.floor(decoded.timestamp / 1000) + 30 * 60; // 30 minutes in seconds
+    const currentTime = Math.floor(Date.now() / 1000);
+    const timeToLive = expiryTime - currentTime;
+
+    // Add the token to the Redis blacklist if it still has time to live
+    if (timeToLive > 0) {
+      await redisClient.setEx(`blacklist:${token}`, timeToLive, "true");
+    }
+
+    // Return the correct status code for a successful logout
+    res.sendStatus(204);
+  } catch (err) {
+    res.status(400).json({ error: ERROR_MESSAGES.INVALID_TOKEN });
+  }
+};
